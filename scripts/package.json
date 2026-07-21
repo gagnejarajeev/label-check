@@ -8,9 +8,6 @@
     "generate-labels": "tsx ./src/generate-labels.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
-  "dependencies": {
-    "canvas": "^2.11.2"
-  },
   "devDependencies": {
     "@types/node": "catalog:",
     "tsx": "catalog:"
