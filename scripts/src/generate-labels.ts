@@ -358,6 +358,13 @@ class Canvas {
     this.drawText(text, startX, y, color, scale);
   }
 
+  // Simulate bold by drawing the text twice: once normally, once offset 1px right.
+  // This thickens strokes so vision models can detect the heavier weight.
+  drawTextBold(text: string, x: number, y: number, color: Color, scale = 1): number {
+    this.drawText(text, x, y, color, scale);
+    return this.drawText(text, x + 1, y, color, scale);
+  }
+
   // Word-wrap text into lines of at most maxChars, return array of lines
   static wrapText(text: string, maxChars: number): string[] {
     const words = text.split(" ");
@@ -481,7 +488,7 @@ function drawLabel(spec: LabelSpec): void {
     y += boxPad;
 
     for (const line of lines) {
-      c.drawText(line, boxX + boxPad, y, dark, 1);
+      c.drawTextBold(line, boxX + boxPad, y, dark, 1);
       y += 10;
     }
     y += boxPad + 4;

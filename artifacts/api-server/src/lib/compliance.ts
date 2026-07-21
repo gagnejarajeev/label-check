@@ -181,9 +181,17 @@ export function checkGovernmentWarning(extraction: LLMExtraction): FieldResult {
     };
   }
 
-  // Word-for-word comparison (collapse whitespace for robustness)
+  // Word-for-word comparison (collapse whitespace for robustness).
+  // Some vision models omit the lead-in ("GOVERNMENT WARNING:") from
+  // government_warning_text even though it appears on the label. If the
+  // extracted text doesn't start with the lead-in but we already confirmed
+  // it is present and all-caps (above), prepend it before comparing so the
+  // body-only transcription still produces a correct match.
   const normalizedOfficial = OFFICIAL_WARNING.replace(/\s+/g, " ").trim();
-  const normalizedExtracted = labelValue.replace(/\s+/g, " ").trim();
+  let normalizedExtracted = labelValue.replace(/\s+/g, " ").trim();
+  if (!normalizedExtracted.toUpperCase().startsWith("GOVERNMENT WARNING:")) {
+    normalizedExtracted = `GOVERNMENT WARNING: ${normalizedExtracted}`;
+  }
 
   if (normalizedOfficial !== normalizedExtracted) {
     const diff = wordDiff(normalizedOfficial, normalizedExtracted);
