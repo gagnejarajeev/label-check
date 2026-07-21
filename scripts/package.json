@@ -5,7 +5,11 @@
   "type": "module",
   "scripts": {
     "hello": "tsx ./src/hello.ts",
+    "generate-labels": "tsx ./src/generate-labels.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "canvas": "^2.11.2"
   },
   "devDependencies": {
     "@types/node": "catalog:",
