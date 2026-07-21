@@ -45,7 +45,7 @@ export async function extractLabelData(
     apiKey,
     defaultHeaders: {
       "HTTP-Referer": "https://replit.com",
-      "X-Title": "Label Check — TTB Verification",
+      "X-Title": "Label Check - TTB Verification",
     },
   });
 
