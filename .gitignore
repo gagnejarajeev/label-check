@@ -47,3 +47,7 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Project-specific excludes
+attached_assets/
+artifacts/label-check-slides/
