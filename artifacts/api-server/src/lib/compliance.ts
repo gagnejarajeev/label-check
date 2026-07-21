@@ -180,15 +180,18 @@ export function checkGovernmentWarning(extraction: LLMExtraction): FieldResult {
   }
 
   // Word-for-word comparison (collapse whitespace for robustness).
-  // Some vision models omit the lead-in ("GOVERNMENT WARNING:") from
-  // government_warning_text even though it appears on the label. If the
-  // extracted text doesn't start with the lead-in but we already confirmed
-  // it is present and all-caps (above), prepend it before comparing so the
-  // body-only transcription still produces a correct match.
+  // Some vision models omit the "GOVERNMENT WARNING:" lead-in from
+  // government_warning_text even though it appears on the label. When that
+  // happens and we have already confirmed the lead-in is present and all-caps
+  // (via warning_lead_in_all_caps above), reconstruct the full text so the
+  // comparison is accurate. Also update displayedValue so the UI shows the
+  // complete verified text rather than the body-only fragment.
   const normalizedOfficial = OFFICIAL_WARNING.replace(/\s+/g, " ").trim();
   let normalizedExtracted = labelValue.replace(/\s+/g, " ").trim();
+  let displayedValue = labelValue;
   if (!normalizedExtracted.toUpperCase().startsWith("GOVERNMENT WARNING:")) {
     normalizedExtracted = `GOVERNMENT WARNING: ${normalizedExtracted}`;
+    displayedValue = `GOVERNMENT WARNING: ${labelValue.trim()}`;
   }
 
   if (normalizedOfficial !== normalizedExtracted) {
@@ -196,7 +199,7 @@ export function checkGovernmentWarning(extraction: LLMExtraction): FieldResult {
     return {
       field,
       status: "FAIL",
-      label_value: labelValue,
+      label_value: displayedValue,
       application_value: OFFICIAL_WARNING,
       explanation: `The warning text does not match 27 CFR Part 16 word for word. ${diff}`,
       diff,
@@ -208,7 +211,7 @@ export function checkGovernmentWarning(extraction: LLMExtraction): FieldResult {
     return {
       field,
       status: "NEEDS_REVIEW",
-      label_value: labelValue,
+      label_value: displayedValue,
       application_value: OFFICIAL_WARNING,
       explanation:
         "Warning text matches exactly, but bold type could not be automatically confirmed. Please visually verify that the warning text is printed in bold type as required.",
@@ -219,7 +222,7 @@ export function checkGovernmentWarning(extraction: LLMExtraction): FieldResult {
   return {
     field,
     status: "PASS",
-    label_value: labelValue,
+    label_value: displayedValue,
     application_value: OFFICIAL_WARNING,
     explanation:
       "Government warning text matches 27 CFR Part 16 exactly and appears in the required format.",
