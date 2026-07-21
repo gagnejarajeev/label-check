@@ -1,5 +1,7 @@
 # Label Check — TTB Alcohol Label Verification
 
+**Live deployment:** https://label-transcriber.replit.app
+
 A prototype web application that verifies alcohol beverage labels against TTB (Alcohol and Tobacco Tax and Trade Bureau) compliance requirements. Upload a label image and application data; the app transcribes the label using a vision LLM and runs deterministic compliance checks.
 
 ---
@@ -227,3 +229,7 @@ Generates five synthetic label images in `scripts/sample-labels/`:
 **Model selection.** The default model `google/gemini-2.5-flash` offers strong vision accuracy at low cost. Any OpenRouter vision-capable model can be used by setting the `VISION_MODEL` environment variable.
 
 **Similarity threshold (85%).** The 85% Levenshtein similarity threshold for NEEDS_REVIEW is a calibration choice. It was set conservatively to capture common variations (abbreviations, ampersands, punctuation differences) without generating too many false reviews.
+
+**Agency-firewall / swappable extractor.** In a production TTB deployment, the LLM call would likely need to route through an agency-approved firewall or an on-premises model to satisfy data-handling requirements. The extractor is deliberately isolated in `extractor.ts` behind a single `extractLabelData()` interface — swapping the underlying model or provider (OpenRouter → Azure OpenAI → a self-hosted endpoint) requires changing only that file, with no impact on compliance logic or the API surface.
+
+**AI assistance disclosure.** This prototype was developed with the assistance of an AI coding tool (Replit Agent). All compliance rules, tolerances, and verdict logic were authored and reviewed by the developer and map directly to the cited CFR sections.
