@@ -158,25 +158,23 @@ export function checkGovernmentWarning(extraction: LLMExtraction): FieldResult {
     };
   }
 
-  // Check ALL-CAPS lead-in: the LLM reports this explicitly, but also verify from the text itself
-  const leadInMatch = labelValue.match(/^([A-Za-z ]+:)/);
-  const detectedLeadIn = leadInMatch ? leadInMatch[1] : "";
-
-  const leadInIsAllCaps =
-    extraction.warning_lead_in_all_caps === true &&
-    detectedLeadIn === detectedLeadIn.toUpperCase();
-
-  if (!leadInIsAllCaps) {
-    const reason =
-      detectedLeadIn
-        ? `The lead-in "${detectedLeadIn}" is not printed in ALL CAPS`
-        : "The warning lead-in is not in all capital letters";
+  // Check ALL-CAPS lead-in via the LLM's explicit boolean.
+  //
+  // Note: vision models (including Gemini) often omit the "GOVERNMENT WARNING:"
+  // lead-in from government_warning_text even when it appears on the label,
+  // returning only the body starting at "(1)...". We therefore cannot
+  // independently cross-check the lead-in by regex-matching the extracted text —
+  // doing so would give a false impression of verification (an empty match
+  // trivially passes any case-check). The dedicated warning_lead_in_all_caps
+  // field is the only reliable signal, and we rely on it explicitly.
+  if (extraction.warning_lead_in_all_caps !== true) {
     return {
       field,
       status: "FAIL",
       label_value: labelValue,
       application_value: OFFICIAL_WARNING,
-      explanation: `${reason}. Per 27 CFR Part 16, the warning must begin with "GOVERNMENT WARNING:" in capital letters.`,
+      explanation:
+        'The warning lead-in is not printed in ALL CAPITAL LETTERS. Per 27 CFR Part 16, the warning must begin with "GOVERNMENT WARNING:" in capital letters.',
       diff: null,
     };
   }
