@@ -1,0 +1,27 @@
+kind = "slides"
+previewPath = "/label-check-slides/"
+title = "Label Check"
+version = "1.0.0"
+id = "artifacts/label-check-slides"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/label-check-slides/" ]
+localPort = 22077
+
+[services.development]
+run = "pnpm --filter @workspace/label-check-slides run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/label-check-slides", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/label-check-slides/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22077"
+BASE_PATH = "/label-check-slides/"
