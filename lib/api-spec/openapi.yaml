@@ -3,13 +3,15 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Label Check API - TTB alcohol label verification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: verification
+    description: Label verification operations
 paths:
   /healthz:
     get:
@@ -24,13 +26,231 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /verify:
+    post:
+      operationId: verifyLabel
+      tags: [verification]
+      summary: Verify a single alcohol label against application data
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/LabelInput"
+      responses:
+        "200":
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerificationResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server or API error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /batch:
+    post:
+      operationId: batchVerify
+      tags: [verification]
+      summary: Batch-verify multiple labels using a CSV manifest and uploaded images
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/BatchInput"
+      responses:
+        "200":
+          description: Batch verification results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /sample-csv:
+    get:
+      operationId: getSampleCsv
+      tags: [verification]
+      summary: Download a sample batch manifest CSV file for testing
+      responses:
+        "200":
+          description: Sample CSV with one row per test label
+          content:
+            text/csv:
+              schema:
+                type: string
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
 
+    LabelInput:
+      type: object
+      required: [image, brand_name, class_type, abv, net_contents]
+      properties:
+        image:
+          type: string
+          format: binary
+          description: Label image file (JPEG, PNG, or WebP, max 8 MB)
+        brand_name:
+          type: string
+          description: Brand name as listed in the application (e.g., "Stone's Throw")
+        class_type:
+          type: string
+          description: Class and type as listed in the application (e.g., "Straight Rye Whiskey")
+        abv:
+          type: string
+          description: Alcohol by volume as listed in the application (e.g., "45%" or "45")
+        net_contents:
+          type: string
+          description: Net contents as listed in the application (e.g., "750 mL" or "750ml")
+
+    BatchInput:
+      type: object
+      required: [manifest]
+      properties:
+        manifest:
+          type: string
+          format: binary
+          description: CSV file with columns filename,brand_name,class_type,abv,net_contents
+        images:
+          type: array
+          items:
+            type: string
+            format: binary
+          description: Label image files; filenames must match those in the manifest CSV
+
+    FieldResult:
+      type: object
+      required: [field, status, label_value, application_value, explanation]
+      properties:
+        field:
+          type: string
+          description: Name of the field being checked (e.g., "Government Warning")
+        status:
+          type: string
+          enum: [PASS, NEEDS_REVIEW, FAIL]
+          description: Result status for this field
+        label_value:
+          type: ["string", "null"]
+          description: Raw value extracted from the label image
+        application_value:
+          type: ["string", "null"]
+          description: Expected value from the application data
+        explanation:
+          type: string
+          description: Plain-English explanation of the result for non-technical users
+        diff:
+          type: ["string", "null"]
+          description: Word-level diff string for warning text mismatches (present only for warning field)
+
+    ExtractionMeta:
+      type: object
+      required: [confidence]
+      properties:
+        confidence:
+          type: number
+          description: Confidence score for the overall extraction (0.0 to 1.0)
+        legibility_issues:
+          type: ["string", "null"]
+          description: Description of any legibility issues detected (glare, blur, angle, etc.)
+
+    VerificationResult:
+      type: object
+      required: [overall, fields, latency_ms, extraction]
+      properties:
+        overall:
+          type: string
+          enum: [PASS, NEEDS_REVIEW, REJECT]
+          description: >
+            Overall verdict: PASS if all checks pass, REJECT if any field fails,
+            NEEDS_REVIEW if any field needs human review or extraction confidence is low
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldResult"
+          description: Field-by-field breakdown of each compliance check
+        latency_ms:
+          type: integer
+          description: Total end-to-end processing time in milliseconds
+        extraction:
+          $ref: "#/components/schemas/ExtractionMeta"
+
+    BatchRowResult:
+      type: object
+      required: [filename, row_index, overall]
+      properties:
+        filename:
+          type: string
+          description: Filename of the label image as listed in the manifest
+        row_index:
+          type: integer
+          description: 0-based row index in the manifest CSV
+        brand_name:
+          type: ["string", "null"]
+          description: Brand name from the manifest CSV
+        overall:
+          type: string
+          enum: [PASS, NEEDS_REVIEW, REJECT, ERROR]
+          description: Overall verdict for this row (ERROR means the image could not be processed)
+        error_message:
+          type: ["string", "null"]
+          description: Error description when overall is ERROR
+        result:
+          $ref: "#/components/schemas/VerificationResult"
+          description: Full verification result (absent when overall is ERROR)
+
+    BatchSummary:
+      type: object
+      required: [total, passed, review, rejected, errors]
+      properties:
+        total:
+          type: integer
+        passed:
+          type: integer
+        review:
+          type: integer
+        rejected:
+          type: integer
+        errors:
+          type: integer
+
+    BatchResult:
+      type: object
+      required: [summary, rows]
+      properties:
+        summary:
+          $ref: "#/components/schemas/BatchSummary"
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/BatchRowResult"
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
